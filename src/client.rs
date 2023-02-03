@@ -157,6 +157,17 @@ impl Client {
 
         let mut receive_buffer = vec![];
 
+        // channel
+        //     .request_pty(
+        //         true,
+        //         "vt100",
+        //         80,
+        //         24,
+        //         640,
+        //         480,
+        //         &[(russh::Pty::TTY_OP_END, 0)][..],
+        //     )
+        //     .await?;
         channel.exec(true, command).await?;
         while let Some(msg) = channel.wait().await {
             match msg {
@@ -286,6 +297,26 @@ mod tests {
 
         let output = client.execute("2>&1 echo foo >>/dev/stderr").await.unwrap();
         assert_eq!("foo\n", output.output);
+    }
+
+    #[tokio::test]
+    #[ignore = "Preconditions are not garanteed"]
+    async fn recursive_ssh() {
+        let mut client = new_test_host_client().await;
+        // Need `ssh-keygen -t ed25519` + 3 times Enter
+        // and `cat ~/.ssh/id_ed25519.pub > ~/.ssh/authorized_keys`
+        // and `ssh localhost` + once enter to accept fingerprint
+
+        // If a tty couldn't be allocated (e.g. because our ssh connection creates no tty),
+        // this prints "Pseudo-terminal will not be allocated because stdin is not a terminal".
+        let output = client
+            .execute("2>&1 ssh localhost -t echo foo")
+            .await
+            .unwrap();
+        assert_eq!(
+            "foo\r\nConnection to localhost closed.\r\r\n",
+            output.output
+        );
     }
 
     #[tokio::test]
